@@ -1,0 +1,9 @@
+- name: "Test playbook"
+  hosts: all
+  vars_files: [vault.yml]
+  tasks:
+      - name: "Authenticate Github Docker registry"
+        file:
+          path: /tmp/test
+          state: touch
+          mode: 0600

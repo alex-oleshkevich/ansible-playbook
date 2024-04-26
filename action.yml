@@ -1,0 +1,116 @@
+name: "Run Ansible playbookt"
+author: "Alex Oleshkevich"
+description: "Run an Ansible playbook."
+inputs:
+    inventory:
+        required: true
+        description: "The path to the inventory file."
+    playbook:
+        required: true
+        description: "The path to the playbook file."
+    private-key:
+        required: true
+        description: "The path to the private key file."
+    become-password:
+        required: false
+        description: "The password for the become user."
+    become-user:
+        required: false
+        description: "The user to become."
+    become-method:
+        required: false
+        description: "The method to become the user."
+    tags:
+        required: false
+        description: "A comma-separated list of tags to run."
+    skip-tags:
+        required: false
+        description: "A comma-separated list of tags to skip."
+    vault-password:
+        required: false
+        description: "The password for the vault."
+    check-only:
+        required: false
+        description: "Run the playbook in check mode."
+    extra_variables:
+        required: false
+        description: "A JSON object containing variables to pass to the playbook."
+    user:
+        required: false
+        description: "The user to connect as."
+    debug:
+        required: false
+        description: "Enable debug mode."
+
+runs:
+    using: "composite"
+    steps:
+        - name: "Generate Ansible configuration"
+          shell: bash
+          run: |
+              echo '#!/bin/sh'
+              echo 'ansible-playbookt' > cmd
+              echo "--inventory ${{ inputs.inventory }}" >> cmd
+              echo "${{ inputs.private-key }}" > private_key
+              chmod 600 private_key
+              echo "--private-key private_key" >> cmd
+
+              if [ -n "${{ inputs.become-password }}" ]; then
+                  echo ${{ inputs.become-password }} > become_password
+                  chmod 600 become_password
+                  echo "--become-password-file become_password" >> cmd
+              fi
+
+              if [ -n "${{ inputs.become-user }}" ]; then
+                  echo "--become-user ${{ inputs.become-user }}" >> cmd
+              fi
+
+              if [ -n "${{ inputs.become-method }}" ]; then
+                  echo "--become-method ${{ inputs.become-method }}" >> cmd
+              fi
+
+              if [ -n "${{ inputs.tags }}" ]; then
+                  for tag in $(echo ${{ inputs.tags }} | tr "," "\n"); do
+                      echo "--tags $tag" >> cmd
+                  done
+              fi
+
+              if [ -n "${{ inputs.skip-tags }}" ]; then
+                  for tag in $(echo ${{ inputs.skip-tags }} | tr "," "\n"); do
+                      echo "--skip-tags $tag" >> cmd
+                  done
+              fi
+
+              if [ -n "${{ inputs.vault-password }}" ]; then
+                  echo ${{ inputs.vault-password }} >> vault_password
+                  echo "--vault-password-file vault_password" >> cmd
+              fi
+
+              if [ -n "${{ inputs.check-only }}" ]; then
+                  echo "--check" >> cmd
+              fi
+
+              if [ -n "${{ inputs.extra_variables }}" ]; then
+                  echo "--extra-vars '${{ inputs.extra_variables }}'" >> cmd
+              fi
+
+              if [ -n "${{ inputs.user }}" ]; then
+                  echo "--user ${{ inputs.user }}" >> cmd
+              fi
+
+              if [ -n "${{ inputs.debug }}" ]; then
+                  cat cmd
+              fi
+
+        - name: "Run Ansible playbook"
+          shell: bash
+          run: sh cmd
+
+        - name: "Cleanup"
+          shell: bash
+          if: always()
+          run: |
+              rm -f cmd
+              rm -f become_password
+              rm -f vault_password
+              rm -f private_key
