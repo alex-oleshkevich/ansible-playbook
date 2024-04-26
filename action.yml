@@ -49,7 +49,7 @@ runs:
           shell: bash
           run: |
               echo '#!/bin/sh'
-              echo 'ansible-playbookt' > cmd
+              echo 'ansible-playbook' > cmd
               echo "--inventory ${{ inputs.inventory }}" >> cmd
               echo "${{ inputs.private-key }}" > private_key
               chmod 600 private_key
@@ -98,9 +98,12 @@ runs:
                   echo "--user ${{ inputs.user }}" >> cmd
               fi
 
-              if [ -n "${{ inputs.debug }}" ]; then
-                  cat cmd
-              fi
+              tr -d '\n' < cmd > cmd
+
+        - name: "Print Ansible command"
+          if: ${{ inputs.debug != '' }}
+          shell: bash
+          run: cat cmd
 
         - name: "Run Ansible playbook"
           shell: bash
