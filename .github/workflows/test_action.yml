@@ -30,11 +30,17 @@ jobs:
             become-password: "password"
             become-user: "root"
             become-method: "sudo"
-            tags: "tag1 tag2"
-            skip-tags: "tag3 tag4"
+            tags: >-
+              tag1
+              tag2
+            skip-tags: >-
+              tag3
+              tag4
             vault-password: "vault_password"
             check-only: "true"
             user: "user"
             debug: "true"
-            extra_variables: "key1=value1 key2=value2"
+            extra_variables: >-
+              key1=value1
+              key2=value2
             options: "--verbose -T 20"
