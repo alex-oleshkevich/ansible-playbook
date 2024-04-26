@@ -2,10 +2,10 @@ name: "Run Ansible playbookt"
 author: "Alex Oleshkevich"
 description: "Run an Ansible playbook."
 inputs:
-    inventory:
+    inventory-file:
         required: true
         description: "The path to the inventory file."
-    playbook:
+    playbook-file:
         required: true
         description: "The path to the playbook file."
     private-key:
@@ -22,10 +22,10 @@ inputs:
         description: "The method to become the user."
     tags:
         required: false
-        description: "A comma-separated list of tags to run."
+        description: "A space-separated list of tags to run."
     skip-tags:
         required: false
-        description: "A comma-separated list of tags to skip."
+        description: "A space-separated list of tags to skip."
     vault-password:
         required: false
         description: "The password for the vault."
@@ -41,6 +41,9 @@ inputs:
     debug:
         required: false
         description: "Enable debug mode."
+    options:
+        required: false
+        description: "Additional options to pass to the ansible-playbook command."
 
 runs:
     using: "composite"
@@ -50,7 +53,8 @@ runs:
           run: |
               echo '#!/bin/sh'
               echo 'ansible-playbook' > cmd
-              echo "--inventory ${{ inputs.inventory }}" >> cmd
+              echo "${{ inputs.playbook-file }}" >> cmd
+              echo "--inventory ${{ inputs.inventory-file }}" >> cmd
               echo "${{ inputs.private-key }}" > private_key
               chmod 600 private_key
               echo "--private-key private_key" >> cmd
@@ -70,13 +74,13 @@ runs:
               fi
 
               if [ -n "${{ inputs.tags }}" ]; then
-                  for tag in $(echo ${{ inputs.tags }} | tr "," "\n"); do
+                  for tag in $(echo ${{ inputs.tags }} | tr " " "\n"); do
                       echo "--tags $tag" >> cmd
                   done
               fi
 
               if [ -n "${{ inputs.skip-tags }}" ]; then
-                  for tag in $(echo ${{ inputs.skip-tags }} | tr "," "\n"); do
+                  for tag in $(echo ${{ inputs.skip-tags }} | tr " " "\n"); do
                       echo "--skip-tags $tag" >> cmd
                   done
               fi
@@ -91,23 +95,31 @@ runs:
               fi
 
               if [ -n "${{ inputs.extra_variables }}" ]; then
-                  echo "--extra-vars '${{ inputs.extra_variables }}'" >> cmd
+                for variable in $(echo ${{ inputs.extra_variables }} | tr " " "\n"); do
+                    echo "-e $variable" >> cmd
+                done
               fi
 
               if [ -n "${{ inputs.user }}" ]; then
                   echo "--user ${{ inputs.user }}" >> cmd
               fi
 
-              tr -d '\n' < cmd > cmd
+                if [ -n "${{ inputs.options }}" ]; then
+                    for option in $(echo ${{ inputs.options }} | tr " " "\n"); do
+                        echo $option >> cmd
+                    done
+                fi
+
+              cat cmd | tr '\n' ' \\' > out
 
         - name: "Print Ansible command"
           if: ${{ inputs.debug != '' }}
           shell: bash
-          run: cat cmd
+          run: cat out
 
         - name: "Run Ansible playbook"
           shell: bash
-          run: sh cmd
+          run: sh out
 
         - name: "Cleanup"
           shell: bash
